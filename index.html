@@ -14,12 +14,9 @@
       <video id="my-video" src="animation.mp4" autoplay loop muted playsinline webkit-playsinline></video>
     </a-assets>
 
-    <!-- Swapped your custom marker for the default Hiro marker -->
     <a-marker preset="hiro">
-      
-      <a-box position="0 0.5 0" material="color: red;"></a-box>
+      <!-- The red box is gone, leaving only your video -->
       <a-video src="#my-video" width="0.9" height="1.6" position="0 0 0" rotation="-90 0 0"></a-video>
-      
     </a-marker>
     
     <a-entity camera></a-entity>
