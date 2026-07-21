@@ -23,19 +23,24 @@
   </head>
 <body style="margin: 0; overflow: hidden;">
   
+  <!-- STEP 2: The raycaster setup is injected right here into the scene -->
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
     
+    <!-- Preload your audio file -->
     <a-assets>
-      <video id="my-video" src="animation.mp4" autoplay loop muted playsinline webkit-playsinline></video>
+      <!-- Ensure you upload your MP3 to GitHub and change 'your-voiceover.mp3' to match your actual file name -->
+      <audio id="history-audio" src="your-voiceover.mp3" preload="auto"></audio>
     </a-assets>
 
     <a-marker preset="hiro">
-      <!-- The red box is gone, leaving only your video -->
-      <a-video src="#my-video" width="0.9" height="1.6" position="0 0 0" rotation="-90 0 0"></a-video>
+      
+      <!-- STEP 3: The interactive object. Notice the class and the play-audio-on-click command! -->
+      <a-box position="0 0.5 0" material="color: blue;" class="clickable" play-audio-on-click></a-box>
+      
     </a-marker>
     
     <a-entity camera></a-entity>
+    
   </a-scene>
-  
 </body>
 </html>
