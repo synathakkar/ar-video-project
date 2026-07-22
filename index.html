@@ -7,88 +7,114 @@
 
     <script>
       // ----------------------------------------------------
-      // COMPONENT 1: The Director (Handles Scene Transitions)
+      // COMPONENT 1: MASTER GAME MANAGER
+      // This controls the flow of all phases globally
       // ----------------------------------------------------
-      AFRAME.registerComponent('play-audio-on-click', {
+      AFRAME.registerComponent('game-manager', {
         init: function () {
-          let el = this.el; 
-          let phase1Vid = document.querySelector('#phase1-video');
+          // Grab all our elements
+          let startBtn = document.querySelector('#start-btn');
+          let videoPlane = document.querySelector('#phase-1-egypt');
+          let video = document.querySelector('#phase1-video');
+          let audio = document.querySelector('#history-audio');
+          let phase2Container = document.querySelector('#phase-2-germs');
+          let envContainer = document.querySelector('#shared-environment');
+          
+          let currentPhase = 0; // Tracks where we are
 
-          // Fix: Bind the 'ended' event cleanly outside the click function
-          phase1Vid.addEventListener('ended', function() {
+          // Make sure the video doesn't loop accidentally
+          video.loop = false;
+
+          // LISTEN FOR START BUTTON TAP
+          startBtn.addEventListener('click', function () {
+            if (currentPhase !== 0) return; // Prevent double taps
+            currentPhase = 1;
+            console.log("Start tapped. Unlocking media...");
+
+            // 1. THE UNLOCK (Crucial for mobile!)
+            audio.play();
+            video.play();
+            video.pause(); // Pause instantly so we don't miss the beginning
+
+            // 2. FADE OUT THE BUTTON
+            startBtn.emit('fadeOut');
+            startBtn.classList.remove('clickable');
+
+            // 3. WAIT 1 SECOND, THEN SHOW VIDEO
+            setTimeout(() => {
+              startBtn.setAttribute('visible', 'false'); // Hide button
+              videoPlane.setAttribute('visible', 'true'); // Show video screen
+              
+              video.currentTime = 0; // Rewind
+              video.play(); // Play safely!
+              console.log("STARTING PHASE 1: Video Playing");
+            }, 1000);
+          });
+
+          // LISTEN FOR PHASE 1 VIDEO TO FINISH
+          video.addEventListener('ended', function() {
+            if (currentPhase !== 1) return;
+            currentPhase = 2;
             console.log("Phase 1 finished. Spawning Phase 2 and Grass...");
             
-            // Hide Video, Reveal Environment and Germs
-            document.querySelector('#phase-1-egypt').setAttribute('visible', 'false');
-            document.querySelector('#shared-environment').setAttribute('visible', 'true');
-            document.querySelector('#phase-2-germs').setAttribute('visible', 'true');
+            // Hide Video
+            videoPlane.setAttribute('visible', 'false');
             
-            // Activate hitboxes
+            // Show Environment and Germs
+            envContainer.setAttribute('visible', 'true');
+            phase2Container.setAttribute('visible', 'true');
+            
+            // Activate the invisible hitboxes so the user can tap them
             let hitboxes = document.querySelectorAll('.germ-hitbox');
             hitboxes.forEach(h => h.classList.add('clickable'));
-          });
-          
-          el.addEventListener('click', function () {
-            // 1. Play Audio immediately
-            let audio = document.querySelector('#history-audio');
-            audio.currentTime = 0; 
-            audio.play();
-            
-            // 2. Play Video immediately to bypass browser security blocks!
-            // It will play invisibly in the background for 1 second.
-            phase1Vid.play();
-
-            // 3. Trigger fade out on Start button
-            el.emit('fadeOut');
-            el.classList.remove('clickable');
-
-            // 4. Wait for the fade to finish
-            setTimeout(() => {
-              el.setAttribute('visible', 'false'); // Hide button completely
-              document.querySelector('#phase-1-egypt').setAttribute('visible', 'true'); // Show video
-              
-              // Rewind the playing video to the beginning right as it becomes visible
-              phase1Vid.currentTime = 0; 
-            }, 1000);
           });
         }
       });
 
       // ----------------------------------------------------
-      // COMPONENT 2: The Hitbox Logic (Perfect Tapping)
+      // COMPONENT 2: THE GERM DESTRUCTION LOGIC
       // ----------------------------------------------------
       let germsRemaining = 5; 
 
-      AFRAME.registerComponent('destroyable-germ', {
+      AFRAME.registerComponent('germ-logic', {
         init: function () {
-          let el = this.el; 
+          let el = this.el; // This is the invisible hitbox
           
           el.addEventListener('click', function () {
+            if (!el.classList.contains('clickable')) return;
             el.classList.remove('clickable'); // Prevent double taps
 
+            // Find the visual image that lives next to this hitbox
             let parent = el.parentNode;
             let visualEl = parent.querySelector('.germ-visual');
 
+            // Play Pop Sound
             let popSound = document.querySelector('#pop-sound');
             popSound.currentTime = 0;
             popSound.play();
 
+            // Setup Animation Frames
             let frames = ['#d1', '#d2', '#d3', '#d4', '#d5', '#d6'];
             let currentFrame = 0;
 
+            // Play Animation
             let animInterval = setInterval(() => {
               if (currentFrame < frames.length) {
                 visualEl.setAttribute('src', frames[currentFrame]);
                 currentFrame++;
               } else {
+                // Animation Done
                 clearInterval(animInterval);
-                parent.setAttribute('visible', 'false'); 
+                parent.setAttribute('visible', 'false'); // Hide this germ cluster completely
+                
                 germsRemaining--;
                 console.log("Germ destroyed! Remaining: " + germsRemaining);
 
+                // Check if all germs are dead
                 if (germsRemaining <= 0) {
-                  console.log("Phase 2 Complete. Ready for Phase 3!");
+                  console.log("Phase 2 Complete! Ready for Phase 3...");
                   document.querySelector('#phase-2-germs').setAttribute('visible', 'false');
+                  
                   // Phase 3 trigger logic will go here
                 }
               }
@@ -99,14 +125,14 @@
     </script>
   </head>
 
+  <!-- Notice the game-manager is now attached directly to the a-scene -->
   <body style="margin: 0; overflow: hidden;">
     
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
+    <a-scene game-manager embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
       
       <a-assets>
         <audio id="history-audio" src="your-voiceover.mp3" preload="auto"></audio>
         <audio id="pop-sound" src="pop.mp3" preload="auto"></audio>
-        
         <video id="phase1-video" src="egypt-animation.webm" preload="auto" muted playsinline webkit-playsinline></video>
 
         <img id="instruction-text" src="destroy-text.png">
@@ -124,8 +150,8 @@
 
       <a-marker preset="hiro">
         
-        <!-- THE START BUTTON -->
-        <a-image id="start-btn" src="Start.png" position="0 0.5 0" width="1.5" height="1" rotation="-90 0 0" class="clickable" play-audio-on-click animation="property: components.material.material.opacity; to: 0; dur: 1000; startEvents: fadeOut"></a-image>
+        <!-- START BUTTON -->
+        <a-image id="start-btn" src="Start.png" position="0 0.5 0" width="1.5" height="1" rotation="-90 0 0" class="clickable" animation="property: components.material.material.opacity; to: 0; dur: 1000; startEvents: fadeOut"></a-image>
         
         <!-- PHASE 1: EGYPT VIDEO -->
         <a-entity id="phase-1-egypt" visible="false">
@@ -142,30 +168,31 @@
         <a-entity id="phase-2-germs" visible="false">
           <a-image src="#instruction-text" position="0 0.6 0" width="2" height="3.55" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
 
-          <!-- GERM CLUSTERS -->
+          <!-- GERM CLUSTERS (Visuals + Invisible Hitboxes) -->
+          <!-- We attach germ-logic solely to the invisible hitboxes now -->
           <a-entity class="germ-cluster" position="-0.9 0.5 0.5">
             <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+            <a-box class="germ-hitbox" germ-logic width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0.9 0.5 0.5">
             <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+            <a-box class="germ-hitbox" germ-logic width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0 0.5 0">
             <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+            <a-box class="germ-hitbox" germ-logic width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
           
           <a-entity class="germ-cluster" position="-0.9 0.5 -0.8">
             <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+            <a-box class="germ-hitbox" germ-logic width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0.9 0.5 -0.8">
             <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+            <a-box class="germ-hitbox" germ-logic width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
         </a-entity>
 
