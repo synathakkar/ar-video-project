@@ -134,16 +134,20 @@
         </a-entity>
 
         <!-- PHASE 2: INTERACTIVE GERMS (Hidden by default) -->
+      <!-- PHASE 2: INTERACTIVE GERMS (Hidden by default) -->
         <a-entity id="phase-2-germs" visible="false">
-          <!-- Text at the top -->
-          <a-image src="#instruction-text" position="0 0.5 -1" width="1.2" height="0.4" rotation="-90 0 0"></a-image>
+          
+          <!-- Text at the top: Scaled up to be much larger and readable -->
+          <!-- Moved slightly further back on the Z axis (-1.2) to make room -->
+          <a-image src="#instruction-text" position="0 0.5 -1.2" width="3" height="1" rotation="-90 0 0"></a-image>
 
-          <!-- 5 Germs spread around the marker -->
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="-0.7 0.5 0.5" width="0.4" height="0.4" rotation="-90 0 0"></a-image>
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="0.7 0.5 0.5" width="0.4" height="0.4" rotation="-90 0 0"></a-image>
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="0 0.5 0" width="0.4" height="0.4" rotation="-90 0 0"></a-image>
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="-0.5 0.5 -0.5" width="0.4" height="0.4" rotation="-90 0 0"></a-image>
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="0.5 0.5 -0.5" width="0.4" height="0.4" rotation="-90 0 0"></a-image>
+          <!-- 5 Germs: Sizes doubled (0.8) and spread out further to prevent overlap -->
+          <a-image class="germ" destroyable-germ src="#germ-idle" position="-1.2 0.5 0.8" width="0.8" height="0.8" rotation="-90 0 0"></a-image>
+          <a-image class="germ" destroyable-germ src="#germ-idle" position="1.2 0.5 0.8" width="0.8" height="0.8" rotation="-90 0 0"></a-image>
+          <a-image class="germ" destroyable-germ src="#germ-idle" position="0 0.5 0" width="0.8" height="0.8" rotation="-90 0 0"></a-image>
+          <a-image class="germ" destroyable-germ src="#germ-idle" position="-1.2 0.5 -0.5" width="0.8" height="0.8" rotation="-90 0 0"></a-image>
+          <a-image class="germ" destroyable-germ src="#germ-idle" position="1.2 0.5 -0.5" width="0.8" height="0.8" rotation="-90 0 0"></a-image>
+          
         </a-entity>
 
       </a-marker>
