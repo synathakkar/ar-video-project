@@ -5,21 +5,36 @@
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-    <!-- The Game Logic Script -->
+ <!-- The Game Logic Script -->
     <script>
       AFRAME.registerComponent('play-audio-on-click', {
         init: function () {
-          let el = this.el; // The specific object that got tapped
+          let el = this.el; // The Start button
           
           el.addEventListener('click', function () {
-            // Find the audio asset and play it
+            // 1. Play the audio
             let audio = document.querySelector('#history-audio');
-            
-            // Reset audio to start if they click it multiple times
             audio.currentTime = 0; 
             audio.play();
             
-            console.log("Item tapped! Playing voiceover.");
+            // 2. Trigger the fade-out animation
+            el.emit('fadeOut');
+            
+            // 3. Remove 'clickable' so the user can't tap the invisible button later
+            el.classList.remove('clickable');
+            
+            console.log("Audio playing, Start button fading...");
+
+            // 4. Wait 1 second (1000ms) for the fade to finish, then start Phase 1
+            setTimeout(() => {
+              el.setAttribute('visible', 'false'); // Hide the button from the renderer
+              
+              // This is where we will trigger the Phase 1 visual
+              console.log("STARTING PHASE 1: Egypt");
+              let phase1 = document.querySelector('#phase-1-egypt');
+              phase1.setAttribute('visible', 'true');
+              
+            }, 1000);
           });
         }
       });
@@ -28,23 +43,26 @@
 
   <body style="margin: 0; overflow: hidden;">
     
-    <!-- Added cursor='rayOrigin: mouse' to allow tapping on the mobile screen -->
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
       
-      <!-- Preload your assets here -->
       <a-assets>
         <audio id="history-audio" src="your-voiceover.mp3" preload="auto"></audio>
-        <!-- <img id="freshener-image" src="vintage-freshener.png"> -->
+        <!-- Preload Phase 1 assets here later -->
       </a-assets>
 
-      <!-- The AR Marker (Using Hiro for testing) -->
       <a-marker preset="hiro">
         
-        <a-image src="Start.png" position="0 0.5 0" width="1.5" height="1" rotation="-90 0 0" class="clickable" play-audio-on-click></a-image>
+        <!-- THE START BUTTON -->
+        <!-- Added the animation attribute to handle the fade -->
+        <a-image id="start-btn" src="Start.png" position="0 0.5 0" width="1.5" height="1" rotation="-90 0 0" class="clickable" play-audio-on-click animation="property: components.material.material.opacity; to: 0; dur: 1000; startEvents: fadeOut"></a-image>
         
+        <!-- PHASE 1 SKELETON (Hidden by default) -->
+        <a-entity id="phase-1-egypt" visible="false">
+            <!-- Your Egypt animations will go inside here -->
+        </a-entity>
+
       </a-marker>
       
-      <!-- The camera -->
       <a-entity camera></a-entity>
       
     </a-scene>
