@@ -64,15 +64,16 @@
       </a-assets>
 
       <!-- The AR Marker (Using Hiro for testing) -->
-      <a-marker preset="hiro">
+     <a-marker preset="hiro">
         
         <!-- THE START BUTTON -->
+        <!-- Scaled horizontally (1.5 wide by 1 tall) -->
         <a-image id="start-btn" src="Start.png" position="0 0.5 0" width="1.5" height="1" rotation="-90 0 0" class="clickable" play-audio-on-click animation="property: components.material.material.opacity; to: 0; dur: 1000; startEvents: fadeOut"></a-image>
         
         <!-- PHASE 1: EGYPT (Hidden by default) -->
         <a-entity id="phase-1-egypt" visible="false">
-            <!-- Transparent video plane -->
-            <a-plane src="#phase1-video" position="0 0.5 0" rotation="-90 0 0" width="1.6" height="0.9" transparent="true"></a-plane>
+            <!-- Scaled vertically for 1215x2160 (0.9 wide by 1.6 tall) -->
+            <a-plane src="#phase1-video" position="0 0.5 0" rotation="-90 0 0" width="0.9" height="1.6" transparent="true"></a-plane>
         </a-entity>
 
       </a-marker>
