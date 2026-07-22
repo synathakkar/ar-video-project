@@ -64,9 +64,9 @@
             envContainer.setAttribute('visible', 'true');
             phase2Container.setAttribute('visible', 'true');
             
-            // Activate the invisible hitboxes so the user can tap them
-            let hitboxes = document.querySelectorAll('.germ-hitbox');
-            hitboxes.forEach(h => h.classList.add('clickable'));
+            // Activate the germ visuals so the user can tap them
+            let visuals = document.querySelectorAll('.germ-visual');
+            visuals.forEach(v => v.classList.add('clickable'));
           });
         }
       });
@@ -78,20 +78,18 @@
 
       AFRAME.registerComponent('germ-logic', {
         init: function () {
-          let el = this.el; // This is the invisible hitbox
+          let el = this.el; // This is the germ image itself now
           
-          el.addEventListener('click', function () {
+          let handleTap = function (e) {
             if (!el.classList.contains('clickable')) return;
             el.classList.remove('clickable'); // Prevent double taps
 
-            // Find the visual image that lives next to this hitbox
-            let parent = el.parentNode;
-            let visualEl = parent.querySelector('.germ-visual');
-
             // Play Pop Sound
             let popSound = document.querySelector('#pop-sound');
-            popSound.currentTime = 0;
-            popSound.play();
+            if (popSound) {
+              popSound.currentTime = 0;
+              popSound.play().catch(err => console.log("Audio error", err));
+            }
 
             // Setup Animation Frames
             let frames = ['#d1', '#d2', '#d3', '#d4', '#d5', '#d6'];
@@ -100,12 +98,12 @@
             // Play Animation
             let animInterval = setInterval(() => {
               if (currentFrame < frames.length) {
-                visualEl.setAttribute('src', frames[currentFrame]);
+                el.setAttribute('src', frames[currentFrame]);
                 currentFrame++;
               } else {
                 // Animation Done
                 clearInterval(animInterval);
-                parent.setAttribute('visible', 'false'); // Hide this germ cluster completely
+                el.parentNode.setAttribute('visible', 'false'); // Hide this germ cluster completely
                 
                 germsRemaining--;
                 console.log("Germ destroyed! Remaining: " + germsRemaining);
@@ -119,7 +117,11 @@
                 }
               }
             }, 100); 
-          });
+          };
+
+          // Listen for both click and touchstart for better mobile responsiveness
+          el.addEventListener('click', handleTap);
+          el.addEventListener('touchstart', handleTap);
         }
       });
     </script>
@@ -155,44 +157,38 @@
         
         <!-- PHASE 1: EGYPT VIDEO -->
         <a-entity id="phase-1-egypt" visible="false">
-            <a-plane src="#phase1-video" position="0 0.5 0" rotation="-90 0 0" width="3.6" height="6.4" transparent="true"></a-plane>
+            <a-plane src="#phase1-video" position="0 0.5 0" rotation="-90 0 0" width="1.8" height="3.2" transparent="true"></a-plane>
         </a-entity>
 
         <!-- PERSISTENT ENVIRONMENT (Grass Background) -->
-        <a-entity id="shared-environment" visible="false">
+        <a-entity id="shared-environment" visible="false" scale="0.5 0.5 0.5">
           <a-image src="#grass-back" position="0 0.4 1.2" width="4" height="2" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
           <a-image src="#grass-front" position="0 0.5 1.5" width="4.5" height="2" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
         </a-entity>
 
         <!-- PHASE 2: GERMS & TEXT -->
-        <a-entity id="phase-2-germs" visible="false">
+        <a-entity id="phase-2-germs" visible="false" scale="0.5 0.5 0.5">
           <a-image src="#instruction-text" position="0 0.6 0" width="2" height="3.55" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
 
-          <!-- GERM CLUSTERS (Visuals + Invisible Hitboxes) -->
-          <!-- We attach germ-logic solely to the invisible hitboxes now -->
+          <!-- GERM CLUSTERS -->
           <a-entity class="germ-cluster" position="-0.9 0.5 0.5">
-            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic width="1.5" height="0.5" depth="2.5" material="opacity: 0; transparent: true"></a-box>
+            <a-image class="germ-visual" germ-logic src="#germ-idle" width="1.5" height="1.5" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0.9 0.5 0.5">
-            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic width="1.5" height="0.5" depth="2.5" material="opacity: 0; transparent: true"></a-box>
+            <a-image class="germ-visual" germ-logic src="#germ-idle" width="1.5" height="1.5" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0 0.5 0">
-            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic width="1.5" height="0.5" depth="2.5" material="opacity: 0; transparent: true"></a-box>
+            <a-image class="germ-visual" germ-logic src="#germ-idle" width="1.5" height="1.5" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
           </a-entity>
           
           <a-entity class="germ-cluster" position="-0.9 0.5 -0.8">
-            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic width="1.5" height="0.5" depth="2.5" material="opacity: 0; transparent: true"></a-box>
+            <a-image class="germ-visual" germ-logic src="#germ-idle" width="1.5" height="1.5" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0.9 0.5 -0.8">
-            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic width="1.5" height="0.5" depth="2.5" material="opacity: 0; transparent: true"></a-box>
+            <a-image class="germ-visual" germ-logic src="#germ-idle" width="1.5" height="1.5" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
           </a-entity>
         </a-entity>
 
