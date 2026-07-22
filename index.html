@@ -7,45 +7,43 @@
 
     <script>
       // ----------------------------------------------------
-      // COMPONENT 1: The Director (Handles Start -> Phase 1 -> Phase 2)
+      // COMPONENT 1: The Director (Handles Scene Transitions)
       // ----------------------------------------------------
       AFRAME.registerComponent('play-audio-on-click', {
         init: function () {
           let el = this.el; 
           
           el.addEventListener('click', function () {
-            // 1. Play the master voiceover audio
             let audio = document.querySelector('#history-audio');
             audio.currentTime = 0; 
             audio.play();
             
-            // 2. Fade out the Start button
             el.emit('fadeOut');
             el.classList.remove('clickable');
-            
-            console.log("Audio playing, Start button fading...");
 
-            // 3. Wait for fade, then start Phase 1 (Egypt Video)
             setTimeout(() => {
               el.setAttribute('visible', 'false'); 
-              console.log("STARTING PHASE 1: Egypt Video");
               
               document.querySelector('#phase-1-egypt').setAttribute('visible', 'true');
               let phase1Vid = document.querySelector('#phase1-video');
               phase1Vid.currentTime = 0;
               phase1Vid.play();
               
-              // 4. Listen for Phase 1 to end, then trigger Phase 2
               phase1Vid.addEventListener('ended', function() {
-                console.log("Phase 1 finished. Spawning Phase 2 Germs...");
+                console.log("Phase 1 finished. Spawning Phase 2 and Grass...");
                 
-                // Hide Video, Show Germs
+                // 1. Hide Video
                 document.querySelector('#phase-1-egypt').setAttribute('visible', 'false');
+                
+                // 2. Show Persistent Grass Environment
+                document.querySelector('#shared-environment').setAttribute('visible', 'true');
+                
+                // 3. Show Germs
                 document.querySelector('#phase-2-germs').setAttribute('visible', 'true');
                 
-                // Activate germ colliders
-                let germs = document.querySelectorAll('.germ');
-                germs.forEach(g => g.classList.add('clickable'));
+                // 4. Activate the invisible hitboxes instead of the images
+                let hitboxes = document.querySelectorAll('.germ-hitbox');
+                hitboxes.forEach(h => h.classList.add('clickable'));
               });
               
             }, 1000);
@@ -54,42 +52,45 @@
       });
 
       // ----------------------------------------------------
-      // COMPONENT 2: The Germ Logic (Handles Tapping & Animation)
+      // COMPONENT 2: The Hitbox Logic (Perfect Tapping)
       // ----------------------------------------------------
-      let germsRemaining = 5; // Total germs on screen
+      let germsRemaining = 5; 
 
       AFRAME.registerComponent('destroyable-germ', {
         init: function () {
-          let el = this.el;
+          let el = this.el; // This is now the INVISIBLE HITBOX
           
           el.addEventListener('click', function () {
             el.classList.remove('clickable'); // Prevent double taps
 
-            // Play the destruction sound effect
+            // Find the visual image that lives next to this hitbox
+            let parent = el.parentNode;
+            let visualEl = parent.querySelector('.germ-visual');
+
             let popSound = document.querySelector('#pop-sound');
             popSound.currentTime = 0;
             popSound.play();
 
-            // The 6 frames of your destruction animation
             let frames = ['#d1', '#d2', '#d3', '#d4', '#d5', '#d6'];
             let currentFrame = 0;
 
-            // Swap images rapidly to create an animation (100ms per frame)
             let animInterval = setInterval(() => {
               if (currentFrame < frames.length) {
-                el.setAttribute('src', frames[currentFrame]);
+                // Animate the visual sibling
+                visualEl.setAttribute('src', frames[currentFrame]);
                 currentFrame++;
               } else {
-                // Animation finished: clear timer, hide germ, check game state
                 clearInterval(animInterval);
-                el.setAttribute('visible', 'false');
+                parent.setAttribute('visible', 'false'); // Hide the entire cluster
                 germsRemaining--;
                 console.log("Germ destroyed! Remaining: " + germsRemaining);
 
                 if (germsRemaining <= 0) {
                   console.log("Phase 2 Complete. Ready for Phase 3!");
+                  // Hide Phase 2 assets, but the GRASS stays visible!
                   document.querySelector('#phase-2-germs').setAttribute('visible', 'false');
-                  // Phase 3 trigger will go here later
+                  
+                  // Phase 3 trigger logic will go here
                 }
               }
             }, 100); 
@@ -103,16 +104,12 @@
     
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
       
-      <!-- ================= ASSETS ================= -->
       <a-assets>
-        <!-- Audio -->
         <audio id="history-audio" src="your-voiceover.mp3" preload="auto"></audio>
         <audio id="pop-sound" src="pop.mp3" preload="auto"></audio>
         
-        <!-- Phase 1 Video -->
         <video id="phase1-video" src="egypt-animation.webm" preload="auto" muted playsinline webkit-playsinline></video>
 
-        <!-- Phase 2 Images -->
         <img id="instruction-text" src="destroy-text.png">
         <img id="germ-idle" src="germ-idle.png">
         <img id="d1" src="destroy1.png">
@@ -121,39 +118,57 @@
         <img id="d4" src="destroy4.png">
         <img id="d5" src="destroy5.png">
         <img id="d6" src="destroy6.png">
+        
+        <!-- Add your grass assets here -->
+        <img id="grass-front" src="grass1.png">
+        <img id="grass-back" src="grass2.png">
       </a-assets>
 
       <a-marker preset="hiro">
         
-        <!-- THE START BUTTON -->
         <a-image id="start-btn" src="Start.png" position="0 0.5 0" width="1.5" height="1" rotation="-90 0 0" class="clickable" play-audio-on-click animation="property: components.material.material.opacity; to: 0; dur: 1000; startEvents: fadeOut"></a-image>
         
-        <!-- PHASE 1: EGYPT VIDEO (Hidden by default) -->
         <a-entity id="phase-1-egypt" visible="false">
             <a-plane src="#phase1-video" position="0 0.5 0" rotation="-90 0 0" width="0.9" height="1.6" transparent="true"></a-plane>
         </a-entity>
 
-        <!-- PHASE 2: INTERACTIVE GERMS (Hidden by default) -->
-      <!-- PHASE 2: INTERACTIVE GERMS (Hidden by default) -->
-     <!-- PHASE 2: INTERACTIVE GERMS (Hidden by default) -->
-        <a-entity id="phase-2-germs" visible="false">
-          
-          <!-- Text: Scaled to 9:16 ratio. -->
-          <!-- We pushed it back slightly on the Z-axis (-1.2) so it stays at the top -->
-          <a-image src="#instruction-text" position="0 0.5 -1.2" width="2" height="3.55" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+        <!-- PERSISTENT ENVIRONMENT: Grass (Stays alive for Phase 2 & 3) -->
+        <!-- Stacked on the Z axis (1.2 and 1.5) to sit at the bottom of the screen -->
+        <a-entity id="shared-environment" visible="false">
+          <a-image src="#grass-back" position="0 0.4 1.2" width="4" height="2" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+          <a-image src="#grass-front" position="0 0.5 1.5" width="4.5" height="2" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+        </a-entity>
 
-          <!-- 5 Germs: Aspect ratio fixed so they stop squishing. -->
-          <!-- alphaTest: 0.5 ensures their massive transparent canvases don't block taps! -->
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="-0.9 0.5 0.5" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+        <a-entity id="phase-2-germs" visible="false">
+          <!-- Text -->
+          <a-image src="#instruction-text" position="0 0.6 0" width="2" height="3.55" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+
+          <!-- GERM CLUSTERS (Visuals + Hitboxes) -->
+          <!-- We wrap the visual image and a flat, invisible 0.6x0.6 box together. -->
+          <a-entity class="germ-cluster" position="-0.9 0.5 0.5">
+            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+          </a-entity>
           
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="0.9 0.5 0.5" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+          <a-entity class="germ-cluster" position="0.9 0.5 0.5">
+            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+          </a-entity>
           
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="0 0.5 0" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+          <a-entity class="germ-cluster" position="0 0.5 0">
+            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+          </a-entity>
           
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="-0.9 0.5 -0.8" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+          <a-entity class="germ-cluster" position="-0.9 0.5 -0.8">
+            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+          </a-entity>
           
-          <a-image class="germ" destroyable-germ src="#germ-idle" position="0.9 0.5 -0.8" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-          
+          <a-entity class="germ-cluster" position="0.9 0.5 -0.8">
+            <a-image class="germ-visual" src="#germ-idle" width="1.2" height="2.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+            <a-box class="germ-hitbox" destroyable-germ width="0.6" height="0.1" depth="0.6" material="opacity: 0; transparent: true"></a-box>
+          </a-entity>
         </a-entity>
 
       </a-marker>
