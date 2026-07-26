@@ -14,7 +14,6 @@
           let el = this.el;
           let startBtn = document.querySelector('#start-btn');
           
-          // Elements
           let videoPlane1 = document.querySelector('#phase-1-video-plane');
           let video1 = document.querySelector('#phase1-video');
           let videoPlane4 = document.querySelector('#phase-4-video-plane');
@@ -24,14 +23,17 @@
           let phase2Container = document.querySelector('#phase-2-germs');
           let phase3Container = document.querySelector('#phase-3-spray');
           
-          // Audio
           let phase2Audio = document.querySelector('#phase2-audio');
           let phase3Audio = document.querySelector('#phase3-audio');
           
           let currentPhase = 0; 
 
+          // Logic Trackers
           let allGermsDead = false;
           let phase2AudioDone = false;
+          
+          let flowersMaxed = false;
+          let phase3AudioDone = false;
 
           video1.loop = false;
           if(video4) video4.loop = false;
@@ -42,7 +44,6 @@
             currentPhase = 1;
             console.log("Start tapped. Unlocking media...");
 
-            // ONLY UNLOCK VIDEO 1 HERE TO SAVE MEMORY
             video1.currentTime = 0; video1.play().catch(e => console.log(e)); 
             if (phase2Audio) { phase2Audio.play().catch(e => console.log(e)); phase2Audio.pause(); }
             if (phase3Audio) { phase3Audio.play().catch(e => console.log(e)); phase3Audio.pause(); }
@@ -85,12 +86,19 @@
               phase2Container.setAttribute('visible', 'false');
               phase3Container.setAttribute('visible', 'true');
 
+              // Start the staggered fade-in animations
+              let anims = phase3Container.querySelectorAll('[animation]');
+              anims.forEach(animEl => animEl.emit('startAnim'));
+
               if (phase3Audio) {
                 phase3Audio.currentTime = 0;
                 phase3Audio.play();
               }
 
-              document.querySelector('.spray-hitbox').classList.add('clickable');
+              // Wait exactly 8 seconds for all sprites to finish fading in before enabling the spray tap
+              setTimeout(() => {
+                document.querySelector('.spray-hitbox').classList.add('clickable');
+              }, 8000);
             }
           };
 
@@ -106,24 +114,38 @@
             });
           }
 
-          // --- PHASE 3 -> PHASE 4 ---
-          el.addEventListener('phase3-cleared', function() {
-            if (currentPhase !== 3) return;
-            currentPhase = 4;
-            
-            setTimeout(() => {
+          // --- PHASE 3 -> PHASE 4 LOGIC (Whichever finishes last) ---
+          let checkPhase4Start = function() {
+            if (currentPhase === 3 && flowersMaxed && phase3AudioDone) {
+              currentPhase = 4;
               console.log("STARTING PHASE 4");
-              phase3Container.setAttribute('visible', 'false');
-              envContainer.setAttribute('visible', 'false'); 
               
-              videoPlane4.setAttribute('visible', 'true');
-              
-              if (video4) {
-                video4.currentTime = 0;
-                video4.play();
-              }
-            }, 1500);
+              // Wait 1.5 seconds after both requirements are met before transitioning
+              setTimeout(() => {
+                phase3Container.setAttribute('visible', 'false');
+                envContainer.setAttribute('visible', 'false'); 
+                
+                videoPlane4.setAttribute('visible', 'true');
+                
+                if (video4) {
+                  video4.currentTime = 0;
+                  video4.play();
+                }
+              }, 1500);
+            }
+          };
+
+          el.addEventListener('flowers-maxed', function() {
+            flowersMaxed = true;
+            checkPhase4Start();
           });
+
+          if (phase3Audio) {
+            phase3Audio.addEventListener('ended', function() {
+              phase3AudioDone = true;
+              checkPhase4Start();
+            });
+          }
         }
       });
 
@@ -155,8 +177,7 @@
                 el.parentNode.setAttribute('visible', 'false'); 
                 
                 germsRemaining--;
-                console.log("Germ destroyed! Remaining: " + germsRemaining);
-
+                
                 if (germsRemaining <= 0) {
                   el.sceneEl.emit('germs-cleared');
                 }
@@ -181,14 +202,13 @@
           let flowers = document.querySelector('#flowers-layer');
           let textTap = document.querySelector('#texttotap-layer');
           let popSound = document.querySelector('#pop-sound');
-          let video4 = document.querySelector('#phase4-video'); // Get video 4 here!
+          let video4 = document.querySelector('#phase4-video'); 
 
           let handleTap = function (e) {
             if (!el.classList.contains('clickable')) return;
             
-            // UNLOCK VIDEO 4 ON THE VERY FIRST TAP TO DISTRIBUTE MEMORY LOAD
+            // Unlock Video 4 perfectly timed to save memory
             if (clicks === 0 && video4) {
-               console.log("Silently unlocking Video 4...");
                video4.play().catch(err => console.log(err));
                video4.pause();
             }
@@ -196,7 +216,14 @@
             if (popSound) { popSound.currentTime = 0; popSound.play().catch(e => console.log(e)); }
 
             clicks++;
-            console.log("Spray tapped! Count: " + clicks);
+
+            if (clicks === 1) {
+               // Remove A-Frame animations so they don't fight our manual opacity changes
+               smell1.removeAttribute('animation');
+               smell2.removeAttribute('animation');
+               textTap.removeAttribute('animation');
+               textTap.setAttribute('material', 'opacity', '0');
+            }
 
             let opacityGained = clicks / 3; 
             let opacityLost = 1 - opacityGained; 
@@ -205,13 +232,9 @@
             smell1.setAttribute('material', 'opacity', opacityLost);
             smell2.setAttribute('material', 'opacity', opacityLost);
 
-            if (clicks === 1) {
-               textTap.setAttribute('material', 'opacity', '0');
-            }
-
             if (clicks >= 3) {
               el.classList.remove('clickable'); 
-              el.sceneEl.emit('phase3-cleared'); 
+              el.sceneEl.emit('flowers-maxed'); 
             }
           };
 
@@ -296,20 +319,27 @@
           </a-entity>
         </a-entity>
 
+        <!-- PHASE 3: SPRAY BOTTLE & FLOWERS -->
         <a-entity id="phase-3-spray" visible="false" scale="0.5 0.5 0.5">
-          <a-image src="#skull1" position="0 0.51 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; depthWrite: false"></a-image>
-          <a-image src="#skull2" position="0 0.51 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; depthWrite: false"></a-image>
           
-          <a-image id="smell1-layer" src="#smell1" position="0 0.52 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 1; depthWrite: false"></a-image>
-          <a-image id="smell2-layer" src="#smell2" position="0 0.52 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 1; depthWrite: false"></a-image>
+          <!-- Staggered Y heights by 0.002 to completely stop Z-Fighting -->
+          <!-- All start at opacity: 0 and are triggered by the startAnim event -->
           
-          <a-image id="flowers-layer" src="#flowers" position="0 0.53 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 0; depthWrite: false"></a-image>
-          <a-image src="#spraybottle" position="0 0.54 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; depthWrite: false"></a-image>
-          <a-image id="texttotap-layer" src="#texttotap" position="0 0.55 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 1; depthWrite: false"></a-image>
+          <a-image id="skull1-layer" src="#skull1" position="0 0.510 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 0; depthWrite: false" animation="property: material.opacity; from: 0; to: 1; dur: 1000; delay: 0; startEvents: startAnim"></a-image>
+          <a-image id="skull2-layer" src="#skull2" position="0 0.512 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 0; depthWrite: false" animation="property: material.opacity; from: 0; to: 1; dur: 1000; delay: 0; startEvents: startAnim"></a-image>
+          
+          <a-image id="smell1-layer" src="#smell1" position="0 0.514 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 0; depthWrite: false" animation="property: material.opacity; from: 0; to: 1; dur: 2000; delay: 1000; startEvents: startAnim"></a-image>
+          <a-image id="smell2-layer" src="#smell2" position="0 0.516 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 0; depthWrite: false" animation="property: material.opacity; from: 0; to: 1; dur: 2000; delay: 1000; startEvents: startAnim"></a-image>
+          
+          <a-image id="flowers-layer" src="#flowers" position="0 0.518 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 0; depthWrite: false"></a-image>
+          
+          <a-image id="spraybottle-layer" src="#spraybottle" position="0 0.520 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 0; depthWrite: false" animation="property: material.opacity; from: 0; to: 1; dur: 1000; delay: 5000; startEvents: startAnim"></a-image>
+          <a-image id="texttotap-layer" src="#texttotap" position="0 0.522 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 0; depthWrite: false" animation="property: material.opacity; from: 0; to: 1; dur: 2000; delay: 6000; startEvents: startAnim"></a-image>
 
           <a-plane class="spray-hitbox" spray-logic position="0.8 0.56 0" width="2" height="3" rotation="-90 0 0" material="opacity: 0; transparent: true; depthWrite: false"></a-plane>
         </a-entity>
 
+        <!-- PHASE 4: FINAL VIDEO -->
         <a-entity id="phase-4-video-plane" visible="false">
             <a-plane src="#phase4-video" position="0 0.5 0" rotation="-90 0 0" width="1.8" height="3.2" transparent="true"></a-plane>
         </a-entity>
