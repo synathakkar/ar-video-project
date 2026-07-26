@@ -11,46 +11,61 @@
       // ----------------------------------------------------
       AFRAME.registerComponent('game-manager', {
         init: function () {
+          let el = this.el;
           let startBtn = document.querySelector('#start-btn');
-          let videoPlane = document.querySelector('#phase-1-video-plane');
-          let video = document.querySelector('#phase1-video');
-          let phase2Audio = document.querySelector('#phase2-audio');
-          let phase2Container = document.querySelector('#phase-2-germs');
+          
+          // Elements
+          let videoPlane1 = document.querySelector('#phase-1-video-plane');
+          let video1 = document.querySelector('#phase1-video');
+          let videoPlane4 = document.querySelector('#phase-4-video-plane');
+          let video4 = document.querySelector('#phase4-video');
+          
           let envContainer = document.querySelector('#shared-environment');
+          let phase2Container = document.querySelector('#phase-2-germs');
+          let phase3Container = document.querySelector('#phase-3-spray');
+          
+          // Audio
+          let phase2Audio = document.querySelector('#phase2-audio');
+          let phase3Audio = document.querySelector('#phase3-audio');
           
           let currentPhase = 0; 
 
-          video.loop = false;
+          // Phase 2 Completion Trackers
+          let allGermsDead = false;
+          let phase2AudioDone = false;
 
+          video1.loop = false;
+          if(video4) video4.loop = false;
+
+          // --- START BUTTON CLICK ---
           startBtn.addEventListener('click', function () {
             if (currentPhase !== 0) return; 
             currentPhase = 1;
             console.log("Start tapped. Unlocking media...");
 
-            video.currentTime = 0;
-            video.play().catch(e => console.log("Video block:", e)); 
-            
-            if (phase2Audio) {
-              phase2Audio.play().catch(e => console.log("Audio unlock error:", e));
-              phase2Audio.pause();
-            }
+            // Unlock ALL media on first tap to bypass mobile security blocks
+            video1.currentTime = 0; video1.play().catch(e => console.log(e)); 
+            if (video4) { video4.currentTime = 0; video4.play().catch(e => console.log(e)); video4.pause(); }
+            if (phase2Audio) { phase2Audio.play().catch(e => console.log(e)); phase2Audio.pause(); }
+            if (phase3Audio) { phase3Audio.play().catch(e => console.log(e)); phase3Audio.pause(); }
 
             startBtn.emit('fadeOut');
             startBtn.classList.remove('clickable');
 
             setTimeout(() => {
               startBtn.setAttribute('visible', 'false'); 
-              videoPlane.setAttribute('visible', 'true'); 
+              videoPlane1.setAttribute('visible', 'true'); 
               console.log("STARTING PHASE 1");
             }, 1000);
           });
 
-          video.addEventListener('ended', function() {
+          // --- PHASE 1 -> PHASE 2 ---
+          video1.addEventListener('ended', function() {
             if (currentPhase !== 1) return;
             currentPhase = 2;
-            console.log("Phase 1 finished. Spawning Phase 2...");
+            console.log("STARTING PHASE 2");
             
-            videoPlane.setAttribute('visible', 'false');
+            videoPlane1.setAttribute('visible', 'false');
             envContainer.setAttribute('visible', 'true');
             phase2Container.setAttribute('visible', 'true');
             
@@ -62,6 +77,57 @@
               phase2Audio.play();
             }
           });
+
+          // --- PHASE 2 -> PHASE 3 LOGIC (Wait for both audio & germs) ---
+          let checkPhase3Start = function() {
+            if (currentPhase === 2 && allGermsDead && phase2AudioDone) {
+              currentPhase = 3;
+              console.log("STARTING PHASE 3");
+              
+              phase2Container.setAttribute('visible', 'false');
+              phase3Container.setAttribute('visible', 'true');
+
+              if (phase3Audio) {
+                phase3Audio.currentTime = 0;
+                phase3Audio.play();
+              }
+
+              // Activate spray bottle hitbox
+              document.querySelector('.spray-hitbox').classList.add('clickable');
+            }
+          };
+
+          el.addEventListener('germs-cleared', function() {
+            allGermsDead = true;
+            checkPhase3Start();
+          });
+
+          if (phase2Audio) {
+            phase2Audio.addEventListener('ended', function() {
+              phase2AudioDone = true;
+              checkPhase3Start();
+            });
+          }
+
+          // --- PHASE 3 -> PHASE 4 ---
+          el.addEventListener('phase3-cleared', function() {
+            if (currentPhase !== 3) return;
+            currentPhase = 4;
+            
+            // Wait 1.5 seconds so user can see fully bloomed flowers, then start final video
+            setTimeout(() => {
+              console.log("STARTING PHASE 4");
+              phase3Container.setAttribute('visible', 'false');
+              envContainer.setAttribute('visible', 'false'); // Hide grass for final video
+              
+              videoPlane4.setAttribute('visible', 'true');
+              
+              if (video4) {
+                video4.currentTime = 0;
+                video4.play();
+              }
+            }, 1500);
+          });
         }
       });
 
@@ -69,7 +135,6 @@
       // COMPONENT 2: THE GERM DESTRUCTION LOGIC
       // ----------------------------------------------------
       let germsRemaining = 5; 
-
       AFRAME.registerComponent('germ-logic', {
         init: function () {
           let el = this.el; 
@@ -80,10 +145,7 @@
             el.classList.remove('clickable'); 
 
             let popSound = document.querySelector('#pop-sound');
-            if (popSound) {
-              popSound.currentTime = 0;
-              popSound.play().catch(err => console.log("Audio error", err));
-            }
+            if (popSound) { popSound.currentTime = 0; popSound.play().catch(e => console.log(e)); }
 
             let frames = ['#d1', '#d2', '#d3', '#d4', '#d5', '#d6'];
             let currentFrame = 0;
@@ -100,16 +162,58 @@
                 console.log("Germ destroyed! Remaining: " + germsRemaining);
 
                 if (germsRemaining <= 0) {
-                  console.log("Phase 2 Complete! Ready for Phase 3...");
-                  document.querySelector('#phase-2-germs').setAttribute('visible', 'false');
-                  
-                  let phase2Audio = document.querySelector('#phase2-audio');
-                  if (phase2Audio) phase2Audio.pause();
-
-                  // Phase 3 trigger logic will go here
+                  // Tell Game Manager all germs are dead
+                  el.sceneEl.emit('germs-cleared');
                 }
               }
             }, 100); 
+          };
+          el.addEventListener('click', handleTap);
+          el.addEventListener('touchstart', handleTap);
+        }
+      });
+
+      // ----------------------------------------------------
+      // COMPONENT 3: SPRAY BOTTLE LOGIC
+      // ----------------------------------------------------
+      AFRAME.registerComponent('spray-logic', {
+        init: function () {
+          let el = this.el;
+          let clicks = 0;
+          
+          // Get our image layers
+          let smell1 = document.querySelector('#smell1-layer');
+          let smell2 = document.querySelector('#smell2-layer');
+          let flowers = document.querySelector('#flowers-layer');
+          let textTap = document.querySelector('#texttotap-layer');
+          let popSound = document.querySelector('#pop-sound');
+
+          let handleTap = function (e) {
+            if (!el.classList.contains('clickable')) return;
+            
+            if (popSound) { popSound.currentTime = 0; popSound.play().catch(e => console.log(e)); }
+
+            clicks++;
+            console.log("Spray tapped! Count: " + clicks);
+
+            // Calculate crossfade math
+            let opacityGained = clicks / 3; // 0.33, 0.66, 1.0
+            let opacityLost = 1 - opacityGained; // 0.66, 0.33, 0.0
+
+            // Apply opacity
+            flowers.setAttribute('material', 'opacity', opacityGained);
+            smell1.setAttribute('material', 'opacity', opacityLost);
+            smell2.setAttribute('material', 'opacity', opacityLost);
+
+            // Fade out the instruction text on the first tap so it gets out of the way
+            if (clicks === 1) {
+               textTap.setAttribute('material', 'opacity', '0');
+            }
+
+            if (clicks >= 3) {
+              el.classList.remove('clickable'); // Stop allowing taps
+              el.sceneEl.emit('phase3-cleared'); // Tell Game Manager we are done
+            }
           };
 
           el.addEventListener('click', handleTap);
@@ -124,13 +228,18 @@
     <a-scene game-manager embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
       
       <a-assets>
+        <!-- AUDIO -->
         <audio id="pop-sound" src="pop.mp3" preload="auto"></audio>
         <audio id="phase2-audio" src="phase2-audio.mp3" preload="auto"></audio>
+        <audio id="phase3-audio" src="phase3-audio.mp3" preload="auto"></audio>
+        
+        <!-- VIDEO -->
         <video id="phase1-video" src="Video1.webm" preload="auto" playsinline webkit-playsinline></video>
+        <video id="phase4-video" src="Video2.webm" preload="auto" playsinline webkit-playsinline></video>
 
+        <!-- PHASE 2 IMAGES -->
         <img id="oil1" src="Oil1.png">
         <img id="oil2" src="Oil2.png">
-
         <img id="instruction-text" src="destroy-text.png">
         <img id="germ-idle" src="germ-idle.png">
         <img id="d1" src="destroy1.png">
@@ -139,9 +248,17 @@
         <img id="d4" src="destroy4.png">
         <img id="d5" src="destroy5.png">
         <img id="d6" src="destroy6.png">
-        
         <img id="grass1" src="grass1.png">
         <img id="grass2" src="grass2.png">
+
+        <!-- PHASE 3 IMAGES -->
+        <img id="skull1" src="Skull 1.png">
+        <img id="skull2" src="Skull 2.png">
+        <img id="smell1" src="Smell 1.png">
+        <img id="smell2" src="Smell 2.png">
+        <img id="spraybottle" src="SprayBottle.png">
+        <img id="texttotap" src="TexttoTap.png">
+        <img id="flowers" src="Flowers.png">
       </a-assets>
 
       <a-marker preset="hiro">
@@ -162,37 +279,63 @@
 
         <!-- PHASE 2: GERMS, TEXT, & OILS -->
         <a-entity id="phase-2-germs" visible="false" scale="0.5 0.5 0.5">
-          
           <a-image src="#oil1" position="-1.5 0.6 1.8" width="0.9" height="0.9" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
           <a-image src="#oil2" position="-0.7 0.6 2.0" width="0.6" height="1.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-
           <a-image src="#instruction-text" position="0 0.6 0.4" width="3" height="5.33" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
 
-          <!-- GERM CLUSTERS (Added depthWrite: false to the materials to prevent visual clipping!) -->
+          <!-- GERM CLUSTERS -->
           <a-entity class="germ-cluster" position="-0.9 0.55 0.5">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="1" depth="3" material="opacity: 0; transparent: true; depthWrite: false"></a-box>
+            <a-plane class="germ-hitbox" germ-logic position="0 0.01 0" width="1.5" height="2.66" rotation="-90 0 0" material="opacity: 0; transparent: true; depthWrite: false"></a-plane>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0.9 0.55 0.5">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="1" depth="3" material="opacity: 0; transparent: true; depthWrite: false"></a-box>
+            <a-plane class="germ-hitbox" germ-logic position="0 0.01 0" width="1.5" height="2.66" rotation="-90 0 0" material="opacity: 0; transparent: true; depthWrite: false"></a-plane>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0 0.55 0">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="1" depth="3" material="opacity: 0; transparent: true; depthWrite: false"></a-box>
+            <a-plane class="germ-hitbox" germ-logic position="0 0.01 0" width="1.5" height="2.66" rotation="-90 0 0" material="opacity: 0; transparent: true; depthWrite: false"></a-plane>
           </a-entity>
           
           <a-entity class="germ-cluster" position="-0.9 0.55 -0.8">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="1" depth="3" material="opacity: 0; transparent: true; depthWrite: false"></a-box>
+            <a-plane class="germ-hitbox" germ-logic position="0 0.01 0" width="1.5" height="2.66" rotation="-90 0 0" material="opacity: 0; transparent: true; depthWrite: false"></a-plane>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0.9 0.55 -0.8">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="1" depth="3" material="opacity: 0; transparent: true; depthWrite: false"></a-box>
+            <a-plane class="germ-hitbox" germ-logic position="0 0.01 0" width="1.5" height="2.66" rotation="-90 0 0" material="opacity: 0; transparent: true; depthWrite: false"></a-plane>
           </a-entity>
+        </a-entity>
+
+        <!-- PHASE 3: SPRAY BOTTLE & FLOWERS -->
+        <a-entity id="phase-3-spray" visible="false" scale="0.5 0.5 0.5">
+          <!-- Stacking full-screen 9:16 canvases slightly above the grass -->
+          <a-image src="#skull1" position="0 0.51 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; depthWrite: false"></a-image>
+          <a-image src="#skull2" position="0 0.51 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; depthWrite: false"></a-image>
+          
+          <!-- Smell layers start at full opacity (1) -->
+          <a-image id="smell1-layer" src="#smell1" position="0 0.52 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 1; depthWrite: false"></a-image>
+          <a-image id="smell2-layer" src="#smell2" position="0 0.52 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 1; depthWrite: false"></a-image>
+          
+          <!-- Flowers start completely invisible (opacity 0) -->
+          <a-image id="flowers-layer" src="#flowers" position="0 0.53 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 0; depthWrite: false"></a-image>
+          
+          <a-image src="#spraybottle" position="0 0.54 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; depthWrite: false"></a-image>
+          
+          <!-- Instruction text -->
+          <a-image id="texttotap-layer" src="#texttotap" position="0 0.55 0" width="4" height="7.11" rotation="-90 0 0" material="transparent: true; opacity: 1; depthWrite: false"></a-image>
+
+          <!-- INVISIBLE HITBOX FOR SPRAY BOTTLE -->
+          <!-- I placed this on the right side of the screen where the bottle is drawn -->
+          <a-plane class="spray-hitbox" spray-logic position="0.8 0.56 0" width="2" height="3" rotation="-90 0 0" material="opacity: 0; transparent: true; depthWrite: false"></a-plane>
+        </a-entity>
+
+        <!-- PHASE 4: FINAL VIDEO -->
+        <a-entity id="phase-4-video-plane" visible="false">
+            <a-plane src="#phase4-video" position="0 0.5 0" rotation="-90 0 0" width="1.8" height="3.2" transparent="true"></a-plane>
         </a-entity>
 
       </a-marker>
