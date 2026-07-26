@@ -14,7 +14,7 @@
           let startBtn = document.querySelector('#start-btn');
           let videoPlane = document.querySelector('#phase-1-video-plane');
           let video = document.querySelector('#phase1-video');
-          let audio = document.querySelector('#history-audio');
+          let phase2Audio = document.querySelector('#phase2-audio');
           let phase2Container = document.querySelector('#phase-2-germs');
           let envContainer = document.querySelector('#shared-environment');
           
@@ -27,35 +27,53 @@
             currentPhase = 1;
             console.log("Start tapped. Unlocking media...");
 
-            audio.play();
-            video.play();
+            // 1. MOBILE MEDIA UNLOCK
+            // We must briefly play/pause all media so the browser allows it later
+            video.play().catch(e => console.log("Video unlock error:", e));
             video.pause(); 
+            
+            if (phase2Audio) {
+              phase2Audio.play().catch(e => console.log("Audio unlock error:", e));
+              phase2Audio.pause();
+            }
 
+            // 2. FADE START BUTTON
             startBtn.emit('fadeOut');
             startBtn.classList.remove('clickable');
 
+            // 3. START PHASE 1
             setTimeout(() => {
               startBtn.setAttribute('visible', 'false'); 
               videoPlane.setAttribute('visible', 'true'); 
               
               video.currentTime = 0; 
               video.play(); 
-              console.log("STARTING PHASE 1: Video 1 Playing");
+              console.log("STARTING PHASE 1: Video 1 Playing with Audio");
             }, 1000);
           });
 
+          // WHEN PHASE 1 VIDEO ENDS, TRIGGER PHASE 2
           video.addEventListener('ended', function() {
             if (currentPhase !== 1) return;
             currentPhase = 2;
-            console.log("Phase 1 finished. Spawning Phase 2 and Grass...");
+            console.log("Phase 1 finished. Spawning Phase 2...");
             
+            // Hide Video
             videoPlane.setAttribute('visible', 'false');
             
+            // Show Environment and Germs
             envContainer.setAttribute('visible', 'true');
             phase2Container.setAttribute('visible', 'true');
             
+            // Activate the germ visuals so the user can tap them
             let visuals = document.querySelectorAll('.germ-visual');
             visuals.forEach(v => v.classList.add('clickable'));
+
+            // Play Phase 2 Audio
+            if (phase2Audio) {
+              phase2Audio.currentTime = 0;
+              phase2Audio.play();
+            }
           });
         }
       });
@@ -97,6 +115,10 @@
                   console.log("Phase 2 Complete! Ready for Phase 3...");
                   document.querySelector('#phase-2-germs').setAttribute('visible', 'false');
                   
+                  // Stop Phase 2 audio when complete (optional, remove if you want it to keep playing)
+                  let phase2Audio = document.querySelector('#phase2-audio');
+                  if (phase2Audio) phase2Audio.pause();
+
                   // Phase 3 trigger logic will go here
                 }
               }
@@ -115,11 +137,12 @@
     <a-scene game-manager embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
       
       <a-assets>
-        <audio id="history-audio" src="your-voiceover.mp3" preload="auto"></audio>
+        <!-- SOUND EFFECTS & PHASE AUDIO -->
         <audio id="pop-sound" src="pop.mp3" preload="auto"></audio>
+        <audio id="phase2-audio" src="phase2-audio.mp3" preload="auto"></audio>
         
-        <!-- PHASE 1 ASSET UPDATED HERE -->
-        <video id="phase1-video" src="Video1.webm" preload="auto" muted playsinline webkit-playsinline></video>
+        <!-- PHASE 1 ASSET (Notice 'muted' is completely removed so we can hear it!) -->
+        <video id="phase1-video" src="Video1.webm" preload="auto" playsinline webkit-playsinline></video>
 
         <img id="instruction-text" src="destroy-text.png">
         <img id="germ-idle" src="germ-idle.png">
