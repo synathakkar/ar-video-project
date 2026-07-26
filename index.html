@@ -8,9 +8,11 @@
     <script>
       // ----------------------------------------------------
       // COMPONENT 1: MASTER GAME MANAGER
+      // This controls the flow of all phases globally
       // ----------------------------------------------------
       AFRAME.registerComponent('game-manager', {
         init: function () {
+          // Grab all our elements
           let startBtn = document.querySelector('#start-btn');
           let videoPlane = document.querySelector('#phase-1-egypt');
           let video = document.querySelector('#phase1-video');
@@ -18,42 +20,51 @@
           let phase2Container = document.querySelector('#phase-2-germs');
           let envContainer = document.querySelector('#shared-environment');
           
-          let currentPhase = 0; 
+          let currentPhase = 0; // Tracks where we are
 
+          // Make sure the video doesn't loop accidentally
           video.loop = false;
 
+          // LISTEN FOR START BUTTON TAP
           startBtn.addEventListener('click', function () {
-            if (currentPhase !== 0) return; 
+            if (currentPhase !== 0) return; // Prevent double taps
             currentPhase = 1;
             console.log("Start tapped. Unlocking media...");
 
+            // 1. THE UNLOCK (Crucial for mobile!)
             audio.play();
             video.play();
-            video.pause(); 
+            video.pause(); // Pause instantly so we don't miss the beginning
 
+            // 2. FADE OUT THE BUTTON
             startBtn.emit('fadeOut');
             startBtn.classList.remove('clickable');
 
+            // 3. WAIT 1 SECOND, THEN SHOW VIDEO
             setTimeout(() => {
-              startBtn.setAttribute('visible', 'false'); 
-              videoPlane.setAttribute('visible', 'true'); 
+              startBtn.setAttribute('visible', 'false'); // Hide button
+              videoPlane.setAttribute('visible', 'true'); // Show video screen
               
-              video.currentTime = 0; 
-              video.play(); 
+              video.currentTime = 0; // Rewind
+              video.play(); // Play safely!
               console.log("STARTING PHASE 1: Video Playing");
             }, 1000);
           });
 
+          // LISTEN FOR PHASE 1 VIDEO TO FINISH
           video.addEventListener('ended', function() {
             if (currentPhase !== 1) return;
             currentPhase = 2;
             console.log("Phase 1 finished. Spawning Phase 2 and Grass...");
             
+            // Hide Video
             videoPlane.setAttribute('visible', 'false');
             
+            // Show Environment and Germs
             envContainer.setAttribute('visible', 'true');
             phase2Container.setAttribute('visible', 'true');
             
+            // Activate the germ visuals so the user can tap them
             let visuals = document.querySelectorAll('.germ-visual');
             visuals.forEach(v => v.classList.add('clickable'));
           });
@@ -67,32 +78,37 @@
 
       AFRAME.registerComponent('germ-logic', {
         init: function () {
-          let el = this.el; 
+          let el = this.el; // This is the germ image itself now
           
           let handleTap = function (e) {
             if (!el.classList.contains('clickable')) return;
-            el.classList.remove('clickable'); 
+            el.classList.remove('clickable'); // Prevent double taps
 
+            // Play Pop Sound
             let popSound = document.querySelector('#pop-sound');
             if (popSound) {
               popSound.currentTime = 0;
               popSound.play().catch(err => console.log("Audio error", err));
             }
 
+            // Setup Animation Frames
             let frames = ['#d1', '#d2', '#d3', '#d4', '#d5', '#d6'];
             let currentFrame = 0;
 
+            // Play Animation
             let animInterval = setInterval(() => {
               if (currentFrame < frames.length) {
                 el.setAttribute('src', frames[currentFrame]);
                 currentFrame++;
               } else {
+                // Animation Done
                 clearInterval(animInterval);
-                el.parentNode.setAttribute('visible', 'false'); 
+                el.parentNode.setAttribute('visible', 'false'); // Hide this germ cluster completely
                 
                 germsRemaining--;
                 console.log("Germ destroyed! Remaining: " + germsRemaining);
 
+                // Check if all germs are dead
                 if (germsRemaining <= 0) {
                   console.log("Phase 2 Complete! Ready for Phase 3...");
                   document.querySelector('#phase-2-germs').setAttribute('visible', 'false');
@@ -103,6 +119,7 @@
             }, 100); 
           };
 
+          // Listen for both click and touchstart for better mobile responsiveness
           el.addEventListener('click', handleTap);
           el.addEventListener('touchstart', handleTap);
         }
@@ -110,6 +127,7 @@
     </script>
   </head>
 
+  <!-- Notice the game-manager is now attached directly to the a-scene -->
   <body style="margin: 0; overflow: hidden;">
     
     <a-scene game-manager embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
@@ -128,8 +146,9 @@
         <img id="d5" src="destroy5.png">
         <img id="d6" src="destroy6.png">
         
-        <img id="grass-front" src="grass1.png">
-        <img id="grass-back" src="grass2.png">
+        <!-- Renamed these IDs to be simpler and strictly sequential -->
+        <img id="grass1" src="grass1.png">
+        <img id="grass2" src="grass2.png">
       </a-assets>
 
       <a-marker preset="hiro">
@@ -143,18 +162,19 @@
         </a-entity>
 
         <!-- PERSISTENT ENVIRONMENT (Grass Background) -->
-        <!-- Width and Height fixed to 9:16 (4 x 7.11). Z-positions adjusted to center the full canvas -->
         <a-entity id="shared-environment" visible="false" scale="0.5 0.5 0.5">
-          <a-image src="#grass-back" position="0 0.4 0" width="4" height="7.11" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-          <a-image src="#grass-front" position="0 0.5 0.1" width="4" height="7.11" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+          <!-- Grass 1 is the bottom layer (lowest Y value) -->
+          <a-image src="#grass1" position="0 0.4 0" width="4" height="7.11" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+          <!-- Grass 2 is the middle layer (higher Y value so it overlaps Grass 1) -->
+          <a-image src="#grass2" position="0 0.5 0" width="4" height="7.11" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
         </a-entity>
 
         <!-- PHASE 2: GERMS & TEXT -->
         <a-entity id="phase-2-germs" visible="false" scale="0.5 0.5 0.5">
+          <!-- Text is the top layer (highest Y value so it overlaps Grass 2) -->
           <a-image src="#instruction-text" position="0 0.6 0" width="2" height="3.55" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
 
           <!-- GERM CLUSTERS -->
-          <!-- Width and Height fixed to 9:16 ratio (1.5 x 2.66) to prevent vertical stretching -->
           <a-entity class="germ-cluster" position="-0.9 0.5 0.5">
             <a-image class="germ-visual" germ-logic src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
           </a-entity>
