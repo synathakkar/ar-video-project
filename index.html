@@ -129,7 +129,6 @@
         <audio id="phase2-audio" src="phase2-audio.mp3" preload="auto"></audio>
         <video id="phase1-video" src="Video1.webm" preload="auto" playsinline webkit-playsinline></video>
 
-        <!-- Renamed to match your GitHub exactly -->
         <img id="oil1" src="Oil1.png">
         <img id="oil2" src="Oil2.png">
 
@@ -165,37 +164,38 @@
         <!-- PHASE 2: GERMS, TEXT, & OILS -->
         <a-entity id="phase-2-germs" visible="false" scale="0.5 0.5 0.5">
           
-          <!-- NEW OILS PLACEMENT: Moved to the left foreground hill (matching the blue circle) -->
-          <a-image src="#oil1" position="-1.4 0.6 0.4" width="0.9" height="0.9" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-          <a-image src="#oil2" position="-0.6 0.6 0.4" width="0.6" height="1.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+          <!-- OILS PLACEMENT: Shifted down into the blue circle (Z axis increased to 1.8 and 2.0) -->
+          <a-image src="#oil1" position="-1.5 0.6 1.8" width="0.9" height="0.9" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
+          <a-image src="#oil2" position="-0.7 0.6 2.0" width="0.6" height="1.1" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
 
           <!-- TEXT -->
           <a-image src="#instruction-text" position="0 0.6 0.4" width="3" height="5.33" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
 
-          <!-- GERM CLUSTERS (With massive 2.5 x 2.5 invisible hitboxes) -->
+          <!-- GERM CLUSTERS -->
+          <!-- Replaced thin 2D planes with fat 3D boxes for perfect touch detection -->
           <a-entity class="germ-cluster" position="-0.9 0.5 0.5">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-plane class="germ-hitbox" germ-logic position="0 0.05 0" width="2.5" height="2.5" rotation="-90 0 0" material="opacity: 0; transparent: true"></a-plane>
+            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="0.5" depth="2" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0.9 0.5 0.5">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-plane class="germ-hitbox" germ-logic position="0 0.05 0" width="2.5" height="2.5" rotation="-90 0 0" material="opacity: 0; transparent: true"></a-plane>
+            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="0.5" depth="2" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0 0.5 0">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-plane class="germ-hitbox" germ-logic position="0 0.05 0" width="2.5" height="2.5" rotation="-90 0 0" material="opacity: 0; transparent: true"></a-plane>
+            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="0.5" depth="2" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
           
           <a-entity class="germ-cluster" position="-0.9 0.5 -0.8">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-plane class="germ-hitbox" germ-logic position="0 0.05 0" width="2.5" height="2.5" rotation="-90 0 0" material="opacity: 0; transparent: true"></a-plane>
+            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="0.5" depth="2" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
           
           <a-entity class="germ-cluster" position="0.9 0.5 -0.8">
             <a-image class="germ-visual" src="#germ-idle" width="1.5" height="2.66" rotation="-90 0 0" material="alphaTest: 0.5"></a-image>
-            <a-plane class="germ-hitbox" germ-logic position="0 0.05 0" width="2.5" height="2.5" rotation="-90 0 0" material="opacity: 0; transparent: true"></a-plane>
+            <a-box class="germ-hitbox" germ-logic position="0 0 0" width="2" height="0.5" depth="2" material="opacity: 0; transparent: true"></a-box>
           </a-entity>
         </a-entity>
 
